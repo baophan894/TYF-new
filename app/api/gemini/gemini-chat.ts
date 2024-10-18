@@ -1,4 +1,3 @@
-
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -9,11 +8,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const { message } = req.body;
 
   try {
-    const response = await fetch('https://api.gemini.com/v1/your-endpoint', {
+    const response = await fetch(process.env.GEMINI_API_URL || '', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-     
+        'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`, 
       },
       body: JSON.stringify({ message }),
     });

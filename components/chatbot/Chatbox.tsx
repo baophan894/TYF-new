@@ -1,75 +1,139 @@
-// Chatbot.tsx
-import { useState } from "react";
+'use client';
+import { useState, useEffect } from "react";
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} from "@google/generative-ai";
 
-interface ChatbotProps {
-  onClose: () => void;
+// Define types for messages
+interface Message {
+  text: string;
+  role: "user" | "bot";
+  timestamp: Date;
 }
 
-const Chatbot: React.FC<ChatbotProps> = ({ onClose }) => {
-  const [messages, setMessages] = useState<{ user: string; bot: string }[]>([]);
-  const [input, setInput] = useState("");
+export default function Chatbot() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [userInput, setUserInput] = useState<string>("");
+  const [chat, setChat] = useState<any>(null); // Replace 'any' with the appropriate type if known
+  const [error, setError] = useState<string | null>(null);
 
-  const sendMessage = async () => {
-    if (input.trim() === "") return; 
-    setMessages((prev) => [...prev, { user: input, bot: "" }]);
-    
-    try {
-      const response = await fetch("D:\Project\TYF-NEW\EXE201\app\api\gemini\gemini-chat.ts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
-      });
+  const API_KEY = "AIzaSyB_P1g4og2h5T92NCV--n0y_l0x13NNGzo"; // Replace with your API Key
+  const MODEL_NAME = "gemini-1.0-pro-001";
 
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
+  const genAI = new GoogleGenerativeAI(API_KEY);
+
+  const generationConfig = {
+    temperature: 0.9,
+    topK: 1,
+    topP: 1,
+    maxOutputTokens: 2048,
+  };
+
+  const safetySettings = [
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    },
+  ];
+
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        const newChat = await genAI
+          .getGenerativeModel({ model: MODEL_NAME })
+          .startChat({
+            generationConfig,
+            safetySettings,
+            history: messages.map((msg) => ({
+              parts: [{ text: msg.text }], // Adjust this line to match the expected Part structure
+              role: msg.role,
+            })),
+          });
+        setChat(newChat);
+      } catch (error) {
+        
       }
+    };
+    initChat();
+  }, [messages]); // Add messages as a dependency
 
-      const data = await response.json();
+  const handleSendMessage = async () => {
+    if (!userInput) return; // Prevent sending empty messages
 
+    const userMessage: Message = {
+      text: userInput,
+      role: "user",
+      timestamp: new Date(),
+    };
 
-      setMessages((prev) => {
-        const lastUserMessage = prev[prev.length - 1]; 
-        return [
-          ...prev.slice(0, -1), 
-          { user: lastUserMessage.user, bot: data.reply }, 
-        ];
-      });
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    setUserInput("");
+
+    try {
+      if (chat) {
+        const result = await chat.sendMessage(userInput);
+        const botMessage: Message = {
+          text: result.response.text(),
+          role: "bot",
+          timestamp: new Date(),
+        };
+        setMessages((prevMessages) => [...prevMessages, botMessage]);
+      }
     } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages((prev) => [
-        ...prev,
-        { user: "", bot: "Sorry, I encountered an error." },
-      ]);
-    } finally {
-      setInput(""); 
+      setError("Failed to send message.");
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
   return (
     <>
+      {error && <p className="text-red-500">{error}</p>}
       <div className="messages mb-4" style={{ maxHeight: "300px", overflowY: "auto" }}>
         {messages.map((msg, index) => (
           <div key={index} className="flex items-start mb-4">
-            <img
-              src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"
-              alt="user avatar"
-              className="w-11 h-auto"
-            />
-            <div className="p-3 ml-3 bg-blue-200 rounded-xl">
-              <p className="text-sm mb-0">{msg.user}</p>
-            </div>
-          </div>
-        ))}
-        {messages.map((msg, index) => (
-          <div key={index} className="flex justify-end mb-4">
-            <div className="p-3 mr-3 border border-gray-300 bg-gray-50 rounded-xl">
-              <p className="text-sm mb-0">{msg.bot}</p>
-            </div>
-            <img
-              src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp"
-              alt="bot avatar"
-              className="w-11 h-auto"
-            />
+            {msg.role === "user" ? (
+              <>
+                <img
+                  src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava1-bg.webp"
+                  alt="user avatar"
+                  className="w-11 h-auto"
+                />
+                <div className="p-3 ml-3 bg-blue-200 rounded-xl">
+                  <p className="text-sm mb-0">{msg.text}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-3 mr-3 border border-gray-300 bg-gray-50 rounded-xl">
+                  <p className="text-sm mb-0">{msg.text}</p>
+                </div>
+                <img
+                  src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp"
+                  alt="bot avatar"
+                  className="w-11 h-auto"
+                />
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -77,14 +141,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose }) => {
         <textarea
           className="form-control bg-gray-100 rounded-md border border-gray-300 p-2 w-full"
           rows={4}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (sendMessage(), e.preventDefault())}
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          onKeyDown={handleKeyPress}
           placeholder="Type your message"
         ></textarea>
       </div>
     </>
   );
-};
-
-export default Chatbot;
+}

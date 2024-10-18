@@ -105,12 +105,7 @@ export default function Page() {
         <ControlBar />
   
 
-        <Button
-          className="fixed bottom-4 right-4 z-50"
-          onClick={() => setIsChatOpen(true)}
-        >
-          Live Chat
-        </Button>
+        <Scene/>
       </LiveKitRoom>
 
       <Modal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)}>
@@ -138,6 +133,7 @@ function MyVideoConference() {
       style={{ height: "calc(100vh - var(--lk-control-bar-height))" }}
     >
       <ParticipantTile />
+      
     </GridLayout>
   );
 }

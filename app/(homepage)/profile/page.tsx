@@ -8,6 +8,7 @@ import {
 import FormInput from '@/components/form/FormInput';
 import { SubmitButton } from '@/components/form/Buttons';
 import ImageInputContainer from '@/components/form/ImageInputContainer';
+import QRScanner from '@/components/qr/QrScanner';
 async function ProfilePage() {
   const profile = await fetchProfile();
 
@@ -21,6 +22,7 @@ async function ProfilePage() {
           action={updateProfileImageAction}
           text='Update Profile Image'
         />
+        <QRScanner/>
         <FormContainer action={updateProfileAction}>
           <div className='grid md:grid-cols-2 gap-4 mt-4'>
             <FormInput
